@@ -1,0 +1,178 @@
+.report {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #efece7;
+  padding: 20px 16px 40px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.report-card {
+  width: min(440px, 100%);
+  background: #fff;
+  border: 1px solid #e4dfd7;
+  border-radius: 18px;
+  padding: 24px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 30px rgba(40, 30, 20, 0.06);
+}
+
+.report-eyebrow {
+  margin: 0;
+  color: #8a8176;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.report h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.report-copy {
+  margin: 0;
+  color: #5f574e;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.report-copy strong {
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: #2f2a25;
+}
+
+.field span {
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  border: 1px solid #d8d1c7;
+  border-radius: 10px;
+  padding: 12px 12px;
+  background: #fff;
+  color: #171411;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid rgba(109, 40, 217, 0.25);
+  border-color: #6d28d9;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 10px;
+}
+
+.urgency {
+  margin: 2px 0 0;
+  padding: 0;
+  border: none;
+}
+
+.urgency legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.urgency-options {
+  display: grid;
+  gap: 8px;
+}
+
+.urgency-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 1px;
+  align-items: center;
+  border: 1px solid #d8d1c7;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.urgency-option.selected {
+  border-color: #6d28d9;
+  background: #f7f2ff;
+}
+
+.urgency-option input {
+  grid-row: 1 / span 2;
+  accent-color: #6d28d9;
+}
+
+.urgency-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.urgency-hint {
+  color: #8a8176;
+  font-size: 0.8rem;
+}
+
+.report-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+
+.report-submit,
+.report-secondary {
+  border: none;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-submit {
+  margin-top: 4px;
+  background: #6d28d9;
+  color: #fff;
+}
+
+.report-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.report-secondary {
+  background: #fff;
+  color: #1b1b1b;
+  border: 1px solid #d8d1c7;
+}
+
+.report-success {
+  margin-top: 12vh;
+  text-align: left;
+}

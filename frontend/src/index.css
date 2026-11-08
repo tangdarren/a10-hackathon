@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-page: #f3f3f5;
+  --ink: #111111;
+  --ink-muted: #6b6b6b;
+  --ink-soft: #8a8a8a;
+  --line: #e6e6e6;
+  --line-strong: #d8d8d8;
+  --purple: #6d28d9;
+  --purple-hover: #5b21b6;
+  --dot-idle: #c4c4c4;
+  --dot-running: #22c55e;
+  --dot-stopped: #ef4444;
+  --dot-done: #6d28d9;
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--bg-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
