@@ -49,7 +49,8 @@ MAX_CONTACTS = 3
 # How long Outreach keeps the Gmail open listening for real human replies.
 REPLY_WAIT_SECONDS = int(os.getenv("REPLY_WAIT_SECONDS", "300"))
 # After the first real quote lands, wait this long for others, then hand off.
-REPLY_GRACE_SECONDS = int(os.getenv("REPLY_GRACE_SECONDS", "45"))
+# Default 0 = move to Caller as soon as anyone quotes.
+REPLY_GRACE_SECONDS = int(os.getenv("REPLY_GRACE_SECONDS", "0"))
 # How often the open Gmail is searched for replies while waiting.
 REPLY_POLL_SECONDS = int(os.getenv("REPLY_POLL_SECONDS", "12"))
 
@@ -494,10 +495,18 @@ class OutreachJob:
 
     def _poll_gmail(self, browser: "mail.GmailBrowser") -> None:
         """Search the open Gmail for new human replies and record them."""
+        with self._lock:
+            outbound_bodies = {
+                row.get("body") or ""
+                for row in self.state["emails"]
+                if row.get("body")
+            }
+            by_address = {row["to"].lower(): row["fixer_id"] for row in self.state["emails"]}
         try:
             found = browser.find_replies(
                 subject_tag=self.state["reply_tag"].strip("[]"),
                 skip_threads=self._answered_threads,
+                outbound_bodies=outbound_bodies,
             )
         except mail.NotSignedIn:
             raise
@@ -505,8 +514,6 @@ class OutreachJob:
             self._check()
             self._step(f"Couldn't check Gmail ({type(exc).__name__}) — retrying")
             return
-        with self._lock:
-            by_address = {row["to"].lower(): row["fixer_id"] for row in self.state["emails"]}
         for reply in found:
             key = (reply["thread_id"], reply["sender"], hash(reply["body"]))
             if key in self._seen_replies:
@@ -521,6 +528,7 @@ class OutreachJob:
                 self._step("Skipped Mail Delivery / bounce notice")
                 continue
             # The thread's own To: line says which fixer this answers.
+            # Demo self-replies (from:me) still map via that outbound To:.
             fixer_id = next(
                 (by_address[a] for a in reply["our_recipients"] if a in by_address), None
             ) or self.matches_sender(reply["sender"])
@@ -564,9 +572,12 @@ class OutreachJob:
                 replies_in = [q["reply"]["status"] for q in self.state["quotes"]]
             if "waiting" not in replies_in:
                 break
-            # Only a real quote (not a bounce) starts the short grace window.
+            # First real quote → hand off to Caller (optionally brief grace).
             if first_quote_at is None and "quoted" in replies_in:
                 first_quote_at = time.time()
+                if REPLY_GRACE_SECONDS <= 0:
+                    self._step("Got a real quote — moving on to Caller")
+                    break
                 self._step(
                     f"Got a real quote — waiting {REPLY_GRACE_SECONDS}s for others"
                 )

@@ -160,11 +160,26 @@ class GmailBrowser:
 
     def ensure_signed_in(self) -> None:
         self.page.goto(GMAIL_INBOX, wait_until="domcontentloaded", timeout=45_000)
-        self.page.wait_for_timeout(1500)
-        if _is_signed_out(self.page.url):
-            raise NotSignedIn(
-                "Gmail isn't signed in on Browserbase — run `python -m backend.gmail_login`"
-            )
+        # Google often redirects through accounts.*; give the inbox time to settle.
+        for _ in range(8):
+            self.page.wait_for_timeout(1000)
+            url = self.page.url or ""
+            if "mail.google.com/mail" in url and not _is_signed_out(url):
+                try:
+                    if (
+                        self.page.locator('div[role="button"][gh="cm"]').count() > 0
+                        or self.page.locator('input[aria-label="Search mail"]').count() > 0
+                    ):
+                        return
+                except Exception:  # noqa: BLE001
+                    return
+            if _is_signed_out(url):
+                break
+        raise NotSignedIn(
+            "Gmail isn't signed in on Browserbase — run "
+            "`.venv/bin/python -m backend.gmail_login`, finish sign-in in the "
+            "live view, wait until it prints 'Login saved', then retry Outreach."
+        )
 
     def send(self, *, to: str, subject: str, body: str) -> None:
         # Put only to/subject in the URL — long bodies blow the compose URL and fail.
@@ -189,12 +204,18 @@ class GmailBrowser:
         send_button.click()
         self.page.locator(SENT_TOAST).first.wait_for(state="visible", timeout=20_000)
 
-    def find_replies(self, *, subject_tag: str, skip_threads: set[str]) -> list[dict]:
+    def find_replies(
+        self,
+        *,
+        subject_tag: str,
+        skip_threads: set[str],
+        outbound_bodies: set[str] | None = None,
+    ) -> list[dict]:
         """Human replies to emails whose subject contains `subject_tag`.
 
-        One Gmail search, then each matching thread not in `skip_threads` is
-        opened. Bounces (Mail Delivery Subsystem / mailer-daemon), other automated
-        senders and our own messages are ignored. Returns
+        Opens matching threads and returns contractor-style replies. Bounces are
+        ignored. Demo replies from the same Gmail account (from:me) are accepted
+        as long as they aren't the original Outreach send. Returns
         [{thread_id, sender, subject, body, our_recipients}].
         """
         from urllib.parse import quote
@@ -202,10 +223,12 @@ class GmailBrowser:
         from backend import replies
 
         me = from_address().lower()
-        # Exclude bounce traffic up front so DSN threads aren't even opened.
+        outbound = {_normalize_mail_body(b) for b in (outbound_bodies or set()) if b}
+        # Do NOT use -from:me — demo replies are often sent from this same inbox.
+        # Still drop known bounce/DSN traffic from the search list.
         query = (
             f'subject:"{subject_tag}" newer_than:2d '
-            f"-from:me -from:mailer-daemon -from:mail-daemon -from:postmaster "
+            f"-from:mailer-daemon -from:mail-daemon -from:postmaster "
             f'-subject:undeliverable -subject:"delivery status" '
             f'-subject:"mail delivery subsystem" -subject:"failure notice"'
         )
@@ -232,19 +255,38 @@ class GmailBrowser:
                 messages = self.page.evaluate(_THREAD_JS)
             except Exception:  # noqa: BLE001 - skip a thread that won't open
                 messages = []
-            ours = {
-                addr.lower()
-                for m in messages
-                if m["from"].lower() == me
-                for addr in (m.get("to") or [])
-            }
+            # Recipients of our original outbound = which fixer this thread is for.
+            ours: set[str] = set()
             for message in messages:
                 sender = (message.get("from") or "").lower()
                 body = (message.get("body") or "").strip()
+                if sender == me and _is_outreach_outbound(body, outbound):
+                    for addr in message.get("to") or []:
+                        if addr:
+                            ours.add(addr.lower())
+            if not ours:
+                for message in messages:
+                    if (message.get("from") or "").lower() == me:
+                        for addr in message.get("to") or []:
+                            if addr:
+                                ours.add(addr.lower())
+
+            for message in messages:
+                sender = (message.get("from") or "").lower()
+                raw_body = (message.get("body") or "").strip()
                 subject = message.get("subject") or ""
-                if not sender or sender == me or not body:
+                if not sender or not raw_body:
                     continue
-                if replies.is_delivery_failure(sender=sender, subject=subject, body=body):
+                if replies.is_delivery_failure(
+                    sender=sender, subject=subject, body=raw_body
+                ):
+                    continue
+                # Gmail reply bodies include the quoted original — strip that
+                # first or demo self-replies look like our outbound email.
+                body = replies.strip_quoted(raw_body) or raw_body
+                if _is_outreach_outbound(body, outbound):
+                    continue
+                if _is_outreach_outbound(raw_body, outbound) and body == raw_body:
                     continue
                 found.append(
                     {
@@ -258,3 +300,25 @@ class GmailBrowser:
             self.page.go_back(wait_until="domcontentloaded", timeout=20_000)
             self.page.wait_for_timeout(1200)
         return found
+
+
+def _normalize_mail_body(text: str) -> str:
+    return " ".join((text or "").split()).lower()
+
+
+def _is_outreach_outbound(body: str, outbound_bodies: set[str]) -> bool:
+    """True for the original Dispatch quote-request email (not a demo reply)."""
+    normalized = _normalize_mail_body(body)
+    if not normalized:
+        return False
+    for outbound in outbound_bodies:
+        if outbound and (outbound[:160] in normalized or normalized[:160] in outbound):
+            return True
+    return (
+        "could you reply with your earliest arrival" in normalized
+        or (
+            "we manage" in normalized
+            and "maintenance request" in normalized
+            and "property management" in normalized
+        )
+    )

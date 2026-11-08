@@ -185,7 +185,7 @@ _DECLINE_RE = re.compile(
     r"\b(can't|cannot|can not|unable|not available|no availability|fully booked|decline|pass on)\b",
     re.IGNORECASE,
 )
-_PRICE_RE = re.compile(r"\$\s?(\d{2,5}(?:,\d{3})?)")
+_PRICE_RE = re.compile(r"(?:\$\s?(\d{2,5}(?:,\d{3})?)|(\d{2,5}(?:,\d{3})?)\s*\$)")
 _MINUTES_RE = re.compile(r"\b(\d{1,3})\s*(?:min|mins|minutes)\b", re.IGNORECASE)
 _HOURS_RE = re.compile(r"\bin\s+(\d{1,2})\s*(?:h|hr|hrs|hour|hours)\b", re.IGNORECASE)
 _CLOCK_RE = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", re.IGNORECASE)
@@ -209,9 +209,10 @@ def _rule_parse(text: str, now: datetime) -> dict:
     elif m := _CLOCK_RE.search(text):
         minutes = _minutes_until_clock(int(m.group(1)), int(m.group(2) or 0), m.group(3), now)
     declined = bool(_DECLINE_RE.search(text)) and not price
+    price_raw = (price.group(1) or price.group(2)) if price else None
     return {
         "declined": declined,
-        "price": int(price.group(1).replace(",", "")) if price else None,
+        "price": int(price_raw.replace(",", "")) if price_raw else None,
         "arrival_minutes": minutes,
     }
 
