@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchWorkOrders } from './api';
+import { fetchWorkOrders, followUpTenant } from './api';
 import AppShell from './AppShell';
 import type { Urgency, WorkOrder } from './types';
 import './OverviewPage.css';
@@ -53,15 +53,10 @@ function groupOrders(orders: WorkOrder[]): OrderGroup[] {
   }));
 }
 
-function unitLabel(orders: WorkOrder[]) {
-  const units = orders.map((order) => order.unit);
-  if (units.length === 1) return `Unit ${units[0]}`;
-  if (units.length === 2) return `Units ${units[0]}, ${units[1]}`;
-  return `${units.length} units`;
-}
-
 export default function OverviewPage() {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
+  const [followUpBusy, setFollowUpBusy] = useState<string | null>(null);
+  const [followUpNote, setFollowUpNote] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -83,10 +78,26 @@ export default function OverviewPage() {
     };
   }, []);
 
+  const bookedOrders = useMemo(
+    () =>
+      orders
+        .filter((order) => order.status === 'booked' && order.booking)
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        ),
+    [orders],
+  );
+
+  const openOrders = useMemo(
+    () => orders.filter((order) => order.status !== 'booked'),
+    [orders],
+  );
+
   const buckets = useMemo(
     () =>
       BUCKETS.map((bucket) => {
-        const bucketOrders = orders.filter(
+        const bucketOrders = openOrders.filter(
           (order) => order.urgency === bucket.key,
         );
         return {
@@ -95,25 +106,107 @@ export default function OverviewPage() {
           groups: groupOrders(bucketOrders),
         };
       }),
-    [orders],
+    [openOrders],
   );
 
   const emergencies = useMemo(
-    () => orders.filter((order) => order.urgency === 'emergency').length,
-    [orders],
+    () => openOrders.filter((order) => order.urgency === 'emergency').length,
+    [openOrders],
   );
+
+  const onFollowUp = async (order: WorkOrder) => {
+    setFollowUpBusy(order.id);
+    setFollowUpNote('');
+    try {
+      const result = await followUpTenant(order.id);
+      setOrders((current) =>
+        current.map((item) => (item.id === result.order.id ? result.order : item)),
+      );
+      setFollowUpNote(
+        `Emailed ${result.to}: ${result.order.booking?.fixer_name ?? 'helper'} coming ${result.order.booking?.expected_label ?? ''} · ~$${result.order.booking?.price ?? '?'}`
+      );
+    } catch (err) {
+      setFollowUpNote(
+        err instanceof Error ? err.message : 'Could not send follow-up',
+      );
+    } finally {
+      setFollowUpBusy(null);
+    }
+  };
 
   return (
     <AppShell>
       <main className="overview">
+        <section className="booked-section" aria-label="Booked helpers">
+          <div className="overview-intro">
+            <h2>Booked</h2>
+            <div className="stats-inline">
+              <span>
+                <strong>{bookedOrders.length}</strong> booked
+              </span>
+            </div>
+          </div>
+          <div className="booked-strip">
+            <div className="booked-list">
+              {bookedOrders.length === 0 ? (
+                <p className="booked-empty">No bookings yet</p>
+              ) : (
+                bookedOrders.map((order) => {
+                  const booking = order.booking!;
+                  return (
+                    <article key={order.id} className="booked-card">
+                      <div className="booked-copy">
+                        <p className="booked-title">
+                          {order.title}
+                          <span className="booked-meta">
+                            {' '}
+                            · <strong>${booking.price}</strong> ·{' '}
+                            {booking.expected_label}
+                          </span>
+                        </p>
+                        <p className="booked-place">
+                          {order.name}
+                          {' · '}
+                          {order.address}
+                          {order.unit ? ` · Unit ${order.unit}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="follow-up-btn"
+                        disabled={
+                          order.follow_up_sent || followUpBusy === order.id
+                        }
+                        onClick={() => void onFollowUp(order)}
+                      >
+                        {order.follow_up_sent
+                          ? 'Followed up'
+                          : followUpBusy === order.id
+                            ? 'Sending…'
+                            : 'Follow up'}
+                      </button>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+            {followUpNote && (
+              <p className="booked-note" role="status">
+                {followUpNote}
+              </p>
+            )}
+          </div>
+        </section>
+
         <div className="overview-intro">
           <h2>Orders</h2>
           <div className="stats-inline" aria-label="Order stats">
             <span>
-              <strong>{orders.length}</strong> open
+              <strong>{openOrders.length}</strong> open
             </span>
             <span>
-              <strong>{emergencies}</strong> emergency
+              <strong>{emergencies}</strong>{' '}
+              {emergencies === 1 ? 'problem' : 'problems'}
             </span>
           </div>
         </div>
@@ -166,10 +259,14 @@ export default function OverviewPage() {
                               </span>
                             )}
                           </div>
-                          <span className="order-summary-meta">
-                            {unitLabel(group.orders)} ·{' '}
-                            {formatTime(primary.created_at)}
-                          </span>
+                          <div className="order-summary-meta">
+                            <span>{formatTime(primary.created_at)}</span>
+                            <span
+                              className={`status-pill status-${primary.status}`}
+                            >
+                              {primary.status_label}
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     );

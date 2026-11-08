@@ -1,11 +1,121 @@
 .overview {
   flex: 1;
-  width: min(1180px, 100%);
+  width: min(940px, 100%);
   margin: 0 auto;
-  padding: 28px 28px 48px;
+  padding: 24px 28px 36px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+}
+
+.booked-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.booked-strip {
+  background: #fff;
+  border: 1px solid #c9e4d3;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Always reserve room for 2 cards; scroll if more. */
+  height: calc(2 * 56px + 8px);
+  max-height: calc(2 * 56px + 8px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.booked-empty {
+  margin: auto 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.booked-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7fbf8;
+}
+
+.booked-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booked-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.booked-meta {
+  font-weight: 400;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.booked-meta strong {
+  font-weight: 700;
+}
+
+.booked-place {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.follow-up-btn {
+  flex-shrink: 0;
+  border: 1px solid #1f6b45;
+  background: #1f6b45;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.follow-up-btn:hover:not(:disabled) {
+  background: #185536;
+}
+
+.follow-up-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.booked-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
 }
 
 .overview-intro {
@@ -17,7 +127,7 @@
 
 .overview-intro h2 {
   margin: 0;
-  font-size: 1.55rem;
+  font-size: 1.35rem;
   letter-spacing: -0.03em;
 }
 
@@ -38,14 +148,17 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 .priority-bucket {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 16px;
-  min-height: 360px;
+  height: max(360px, calc(100vh - 360px));
+  max-height: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -112,6 +225,9 @@
   gap: 8px;
   padding: 12px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .bucket-empty {
@@ -163,8 +279,47 @@
 }
 
 .order-summary-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--ink-soft);
   font-size: 0.85rem;
+}
+
+.status-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f3f3f5;
+  color: #475467;
+}
+
+.status-fixers_found {
+  background: #eef4ff;
+  color: #3538cd;
+}
+
+.status-awaiting_replies {
+  background: #f4f3ff;
+  color: #5925dc;
+}
+
+.status-quotes_in {
+  background: #fdf2e9;
+  color: #b54708;
+}
+
+.status-no_quotes {
+  background: #fee4e2;
+  color: #b42318;
+}
+
+.status-booked {
+  background: #e3f6ea;
+  color: #067647;
 }
 
 .stack-badge {
@@ -208,11 +363,21 @@
     padding: 20px 16px 36px;
   }
 
+  .booked-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .follow-up-btn {
+    width: 100%;
+  }
+
   .priority-grid {
     grid-template-columns: 1fr;
   }
 
   .priority-bucket {
+    height: auto;
     min-height: 0;
   }
 }

@@ -1,7 +1,12 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { clearWorkOrders, fetchDemoLink, seedWorkOrders } from './api';
+import {
+  clearWorkOrders,
+  fetchDemoLink,
+  seedWorkOrders,
+  sendSampleRequests,
+} from './api';
 import './App.css';
 
 type AppShellProps = {
@@ -11,6 +16,7 @@ type AppShellProps = {
 
 export default function AppShell({ children, title = 'Dispatch' }: AppShellProps) {
   const [showQr, setShowQr] = useState(false);
+  const [sending, setSending] = useState(false);
   const [reportUrl, setReportUrl] = useState(() =>
     new URL('/report', window.location.origin).toString(),
   );
@@ -39,14 +45,37 @@ export default function AppShell({ children, title = 'Dispatch' }: AppShellProps
     }
   };
 
+  const sendSamples = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      const { queued, interval } = await sendSampleRequests();
+      window.setTimeout(
+        () => setSending(false),
+        Math.max(0, queued - 1) * interval * 1000 + 500,
+      );
+    } catch {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="app">
       <header className="topbar">
         <Link to="/" className="brand">
-          <span className="brand-mark" aria-hidden="true" />
-          <h1>{title}</h1>
+          <h1>
+            <img className="brand-wordmark" src="/dispatch-wordmark.png" alt={title} />
+          </h1>
         </Link>
         <div className="topbar-actions">
+          <button
+            className="reset-btn"
+            type="button"
+            onClick={() => void sendSamples()}
+            disabled={sending}
+          >
+            {sending ? 'Sending…' : 'Send sample requests'}
+          </button>
           <button
             className="reset-btn"
             type="button"

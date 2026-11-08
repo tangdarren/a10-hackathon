@@ -3,6 +3,11 @@
 :root {
   --bg-page: #f3f3f5;
   --ink: #111111;
+  /* Brand colors from the Dispatch wordmark */
+  --brand-slate: #4b565d;
+  --brand-slate-hover: #3f494f;
+  --brand-sage: #718373;
+  --brand-sage-soft: #e8ede9;
   --ink-muted: #6b6b6b;
   --ink-soft: #8a8a8a;
   --line: #e6e6e6;
